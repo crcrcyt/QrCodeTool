@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <title>QR Code小工具</title>
+  <!-- 引入外部字體、圖示等 (選擇性) -->
+  <link rel="preconnect" href="https://fonts.gstatic.com">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;600&display=swap" rel="stylesheet">
+
+  <!-- 使用 CDN 的 QRCode 產生庫 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <!-- 使用 CDN 的 jsQR (用於辨識 QRCode) -->
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.3.1/dist/jsQR.js"></script>
+
+  <style>
+    /* 全域設定 */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Poppins', sans-serif;
+    }
+    body {
+      background: #f2f2f2;
+      color: #333;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    h1, h2 {
+      font-weight: 600;
+      margin-bottom: 1rem;
+      text-align: center;
+    }
+    a {
+      color: #007bff;
+      text-decoration: none;
+    }
+
+    /* 主容器 */
+    .container {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+      width: 90%;
+      max-width: 800px;
+      overflow: hidden;
+      transition: all 0.3s ease-in-out;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem;
+    }
+
+    /* 選單區塊 */
+    .feature-list {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 2rem;
+    }
+    .feature-list button {
+      background: #f7f7f7;
+      border: none;
+      border-radius: 6px;
+      padding: 0.8rem 1.2rem;
+      margin: 0 1rem;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.2s;
+    }
+    .feature-list button:hover {
+      background: #007bff;
+      color: #fff;
+      transform: scale(1.05);
+    }
+    .feature-list button.active {
+      background: #007bff;
+      color: #fff;
+    }
+
+    /* 功能區塊 (產生 / 辨識) */
+    .feature-section {
+      width: 100%;
+      display: none;
+      transition: opacity 0.3s ease-in-out;
+    }
+    .feature-section.active {
+      display: block;
+    }
+    .input-area {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 1rem;
+      text-align: center;
+    }
+    .input-area input[type="text"] {
+      width: 80%;
+      padding: 0.6rem;
+      font-size: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      margin-bottom: 1rem;
+    }
+    .input-area button {
+      background: #007bff;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 0.8rem 1.2rem;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.2s;
+    }
+    .input-area button:hover {
+      background: #0056b3;
+      transform: scale(1.05);
+    }
+
+    /* 產生結果：QRCode 圖 + 按鈕置中 */
+    #qrcode-container {
+      display: flex;             
+      flex-direction: column;    
+      align-items: center;       
+      margin-top: 1.5rem;
+    }
+    #qrcode {
+      margin-bottom: 1rem;       /* 與按鈕保持距離 */
+    }
+
+    #download-btn {
+      display: none;             /* 預設隱藏，等產生後顯示 */
+      background: #28a745;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 0.8rem 1.2rem;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.2s;
+    }
+    #download-btn:hover {
+      background: #218838;
+      transform: scale(1.05);
+    }
+
+    /* 上傳辨識區 */
+    .decode-area {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .decode-area label {
+      margin-top: 1rem;
+      background: #007bff;
+      color: #fff;
+      padding: 0.8rem 1.2rem;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.2s;
+    }
+    .decode-area label:hover {
+      background: #0056b3;
+      transform: scale(1.05);
+    }
+    .decode-area input[type="file"] {
+      display: none;
+    }
+    .decode-result {
+      margin-top: 1.5rem;
+      font-size: 1rem;
+    }
+    .decode-result a {
+      font-weight: 600;
+    }
+
+    /* 簡易漸入動畫 */
+    .fade-in {
+      animation: fadeIn 0.6s ease-in-out forwards;
+    }
+    @keyframes fadeIn {
+      0% {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container fade-in">
+    <h1>QR Code小工具</h1>
+    <div class="feature-list">
+      <button id="btn-generate" class="active">產生 QR Code</button>
+      <button id="btn-decode">辨識 QR Code</button>
+    </div>
+    
+    <!-- 產生 QRCode 區塊 -->
+    <div id="generate-section" class="feature-section active">
+      <h2>產生 QR Code</h2>
+      <div class="input-area">
+        <input type="text" id="link-input" placeholder="請輸入或貼上連結..." />
+        <button id="generate-btn">產生</button>
+      </div>
+      <div id="qrcode-container">
+        <!-- 產生出來的 QRCode 會放在這個 div 裡 -->
+        <div id="qrcode"></div>
+        <!-- 下載按鈕：顯示在 QRCode 下方、並置中 -->
+        <button id="download-btn">下載 QR Code (PNG)</button>
+      </div>
+    </div>
+    
+    <!-- 辨識 QRCode 區塊 -->
+    <div id="decode-section" class="feature-section">
+      <h2>辨識 QR Code</h2>
+      <div class="decode-area">
+        <label for="upload-input">選擇 QR Code 圖片</label>
+        <input type="file" id="upload-input" accept="image/*" />
+        <canvas id="qr-canvas" style="display:none;"></canvas>
+        <div class="decode-result" id="decode-result">請上傳一張 QR Code 圖片</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 取得 DOM
+    const btnGenerate = document.getElementById('btn-generate');
+    const btnDecode = document.getElementById('btn-decode');
+    const generateSection = document.getElementById('generate-section');
+    const decodeSection = document.getElementById('decode-section');
+    const linkInput = document.getElementById('link-input');
+    const generateBtn = document.getElementById('generate-btn');
+    const qrcodeDiv = document.getElementById('qrcode');
+    const uploadInput = document.getElementById('upload-input');
+    const decodeResult = document.getElementById('decode-result');
+    const qrCanvas = document.getElementById('qr-canvas');
+    const qrContext = qrCanvas.getContext('2d');
+    const downloadBtn = document.getElementById('download-btn');
+
+    let qrcodeInstance = null;
+
+    // 功能切換
+    btnGenerate.addEventListener('click', () => {
+      btnGenerate.classList.add('active');
+      btnDecode.classList.remove('active');
+      generateSection.classList.add('active');
+      decodeSection.classList.remove('active');
+    });
+    btnDecode.addEventListener('click', () => {
+      btnDecode.classList.add('active');
+      btnGenerate.classList.remove('active');
+      decodeSection.classList.add('active');
+      generateSection.classList.remove('active');
+    });
+
+    // 產生 QRCode
+    generateBtn.addEventListener('click', () => {
+      const linkValue = linkInput.value.trim();
+      if (!linkValue) {
+        alert('請輸入連結');
+        return;
+      }
+
+      // 清除之前的 QRCode
+      qrcodeDiv.innerHTML = '';
+      downloadBtn.style.display = 'none'; // 重新產生前隱藏下載按鈕
+
+      // 建立新的 QRCode
+      qrcodeInstance = new QRCode(qrcodeDiv, {
+        text: linkValue,
+        width: 200,
+        height: 200,
+        correctLevel: QRCode.CorrectLevel.H
+      });
+
+      // 等待 QRCode 產生完後，再顯示「下載」按鈕
+      setTimeout(() => {
+        downloadBtn.style.display = 'block';
+      }, 300);
+    });
+
+    // 下載 QRCode 圖片
+    downloadBtn.addEventListener('click', () => {
+      const qrImg = qrcodeDiv.querySelector('img') || qrcodeDiv.querySelector('canvas');
+      if (qrImg) {
+        let dataUrl = '';
+        if (qrImg.tagName.toLowerCase() === 'img') {
+          dataUrl = qrImg.src; 
+        } else {
+          dataUrl = qrImg.toDataURL('image/png');
+        }
+        const link = document.createElement('a');
+        link.href = dataUrl;
+        link.download = 'my-qrcode.png';
+        link.click();
+      }
+    });
+
+    // 上傳並辨識 QRCode
+    uploadInput.addEventListener('change', () => {
+      const file = uploadInput.files[0];
+      if (!file) {
+        decodeResult.textContent = '請選擇一張 QR Code 圖片。';
+        return;
+      }
+
+      // 讀取圖片檔案
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          // 將圖片繪製到 canvas 上
+          qrCanvas.width = img.width;
+          qrCanvas.height = img.height;
+          qrContext.drawImage(img, 0, 0, img.width, img.height);
+
+          // 從像素資料中辨識 QR
+          const imageData = qrContext.getImageData(0, 0, img.width, img.height);
+          const code = jsQR(imageData.data, img.width, img.height);
+
+          if (code) {
+            decodeResult.innerHTML = `已辨識連結：<a href="${code.data}" target="_blank">${code.data}</a>`;
+          } else {
+            decodeResult.textContent = '辨識失敗，請確認圖片是否為有效的 QR Code。';
+          }
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  </script>
+</body>
+</html>
